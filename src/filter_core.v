@@ -260,7 +260,9 @@ module filter_core (
         x_neg_q <= (cur == S_UPD) ? x[1][7] : x[0][7];
     end
 
-    wire [14:0] mu_ext = {7'd0, mu_q}; 
+    wire [14:0] mu_ext = {7'd0, mu_q};
+ 
+    // avoid xor to handle zero
     wire w_inc = (e_pos_q && x_pos_q) || (e_neg_q && x_neg_q); // inc same sign
     wire w_dec = (e_pos_q && x_neg_q) || (e_neg_q && x_pos_q); // dec opp sign
 
