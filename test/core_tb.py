@@ -18,7 +18,7 @@ def s14(v):
     return v - 0x4000 if v & 0x2000 else v
 
 
-class AfCoreTB:
+class CoreTB:
     def __init__(self, dut):
         self.dut = dut
         self.cycle = 0                    # falling edges since start()

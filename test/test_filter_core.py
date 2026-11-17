@@ -2,7 +2,7 @@ import random
 
 import cocotb
 
-from core_tb import S_FIN, S_IDLE, S_MAC, S_UPD, AfCoreTB
+from core_tb import S_FIN, S_IDLE, S_MAC, S_UPD, CoreTB
 import filter_golden
 
 filter_golden.N_TAPS = 4
@@ -36,7 +36,7 @@ async def check_step(tb, taps, weights, r, adapt=False, mu_sel=0):
 @cocotb.test()
 async def test_reset(dut):
     # verify tb reset 
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
 
     assert tb.state() == S_IDLE
@@ -55,7 +55,7 @@ async def test_reset(dut):
 
 @cocotb.test()
 async def test_step_timing(dut):
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
 
     # fill taps, set weights
@@ -121,7 +121,7 @@ W_SWEEP = [0, 16, -16, 15, -1, 8191, -8192, 1234, -3001, 4096, -4096]
 @cocotb.test()
 async def test_mac_single_tap(dut):
     # verify MAC
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     rng = random.Random(1)
     for pos in range(4):
@@ -137,7 +137,7 @@ async def test_mac_single_tap(dut):
 @cocotb.test()
 async def test_rounding(dut):
     # check MAC rounding, 1.7 x 2.8 = 3.15, drop 8 frac
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     rng = random.Random(2)
     edges = [b + d for b in (-6144, -2048, 2048, 6144) for d in (-1, 0, 1)]
@@ -163,7 +163,7 @@ async def test_saturation(dut):
         ([127, 0, 0, 0], [4096, 0, 0, 0], -128, True), # y = 127 (exact), e = -255 -> -128
     ]
     for taps, weights, r, sat in cases:
-        tb = AfCoreTB(dut)
+        tb = CoreTB(dut)
         await tb.reset()
         m = await check_step(tb, taps, weights, r)
         assert m.sat_flag == sat, f"model sat_flag {m.sat_flag}, case expects {sat}"
@@ -175,7 +175,7 @@ async def test_saturation(dut):
 @cocotb.test()
 async def test_mac_random(dut):
     # compare random inputs for MAC against sw model
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     rng = random.Random(2)
     for _ in range(2000):
@@ -196,7 +196,7 @@ def sgn(v):
 @cocotb.test()
 async def test_update_sign_table(dut):
     # check model and weights and update table match
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     for base in ([3, -3, 0, 127], [-1, 0, 5, -128]):
         for rot in range(4):
@@ -212,7 +212,7 @@ async def test_update_sign_table(dut):
 @cocotb.test()
 async def test_update_mu(dut):
     # Verify all LR values
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     for mu_sel in range(8):
         for r in (10, -10):
@@ -233,7 +233,7 @@ async def test_update_saturation(dut):
         ([-8064, 0, 0, 0], -128, False),           # -8064 - 128 = -8192 exactly
     ]
     for weights, r, sat in cases:
-        tb = AfCoreTB(dut)
+        tb = CoreTB(dut)
         await tb.reset()
         m = await check_step(tb, [1, 1, 1, 1], weights, r, adapt=True, mu_sel=7)
         assert m.sat_flag == sat, f"model sat_flag {m.sat_flag}, case expects {sat}"
@@ -245,7 +245,7 @@ async def test_update_saturation(dut):
 @cocotb.test()
 async def test_adapt_en_sampling(dut):
     # test adaptation when adapt_en is enabled in various states; should follow adapt_en as in FIN state
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     updated = [w + 8 * sgn(5) * sgn(x) for w, x in zip(SIGN_W, SIGN_TAPS)]
     cases = [
@@ -272,7 +272,7 @@ async def test_adapt_en_sampling(dut):
 @cocotb.test()
 async def test_update_random(dut):
     # test outputs and adaptation against ref model
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     rng = random.Random(3)
     weights = [rng.randint(-8192, 8191) for _ in range(4)]
@@ -322,7 +322,7 @@ async def test_sample_spacing(dut):
     # space across multiple cycle values
     w = [1234, -2345, 3456, -4567]
     for s in range(2, 31):
-        tb = AfCoreTB(dut)
+        tb = CoreTB(dut)
         await tb.reset()
         dropped = await run_schedule(tb, [(0, 50, -30), (s, -70, 90)], w)
         assert dropped == (1 if s < STEP_CLK else 0)
@@ -333,7 +333,7 @@ async def test_sample_spacing(dut):
 @cocotb.test()
 async def test_max_rate(dut):
     # send samples at highest rate possible, at STEP_CLK
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     rng = random.Random(4)
     samples = [(STEP_CLK * i, rng.randint(-128, 127), rng.randint(-128, 127)) for i in range(500)]
@@ -345,7 +345,7 @@ async def test_max_rate(dut):
 @cocotb.test()
 async def test_overrun_random(dut):
     # send samples at multiple random lengths, check that dropped flag asserts
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     rng = random.Random(5)
     t, samples = 0, []
@@ -384,7 +384,7 @@ async def pulse_reset(tb):
 
 @cocotb.test()
 async def test_reset_mid_operation(dut):
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
 
     async def fill():
@@ -413,7 +413,7 @@ async def test_reset_mid_operation(dut):
 @cocotb.test()
 async def test_flags_sticky(dut):
     # assert sticky flags until reset
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     rng = random.Random(7)
 
@@ -466,7 +466,7 @@ def mon(w):
 @cocotb.test()
 async def test_monitor_frozen(dut):
     # check weight monitor lane works by disabling adaptation
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     tb.set_weights(MON_W)
     m = model_from([0] * 4, MON_W)
@@ -481,7 +481,7 @@ async def test_monitor_frozen(dut):
 @cocotb.test()
 async def test_monitor_adapting(dut):
     # test weights while adapting, before adaptation step
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     rng = random.Random(9)
     m = model_from([0] * 4, [0] * 4)
@@ -499,7 +499,7 @@ async def test_monitor_adapting(dut):
 @cocotb.test()
 async def test_monitor_snapshot(dut):
     # adapt for 301 cycles, turn adaptation off, filter 4 cycles, compare weights against sw model
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     rng = random.Random(10)
     m = model_from([0] * 4, [0] * 4, adapt=True, mu_sel=7)
@@ -527,7 +527,7 @@ async def test_monitor_snapshot(dut):
 async def test_monitor_dropped_samples(dut):
     # send samples with variable timing
     # verify weight readout advances for output generated, not input accepted. dropped inputs should not impact weight readout
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     tb.set_weights(MON_W)
     rng = random.Random(11)
@@ -548,7 +548,7 @@ async def test_monitor_dropped_samples(dut):
 @cocotb.test()
 async def test_monitor_reset(dut):
     # after reset, weight readout should start from first weight
-    tb = AfCoreTB(dut)
+    tb = CoreTB(dut)
     await tb.reset()
     for done in range(1, 4):              # outputs since reset before the next reset
         for at in (S_MAC, S_UPD):
