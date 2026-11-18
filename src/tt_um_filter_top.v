@@ -27,6 +27,8 @@ module tt_um_filter_top (
     input  wire       clk,
     input  wire       rst_n
 );
+    wire unused = &{1'b0, ui_in[7:4]};
+    
     assign uio_out = 8'h00;
     assign uio_oe  = 8'h00;
 
