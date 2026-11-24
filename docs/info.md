@@ -67,12 +67,6 @@ Further architectural details may be found under spi_arch.pdf and core_arch.pdf.
 | `uio_in[0]`   | `adapt_en` | Enable coefficient adaptation  |
 | `uio_in[3:1]` | `mu_sel`   | Learning rate selection        |
 
-The learning rate is configured as:
-
-$$
-\mu = 2^{(\text{mu\_sel}-12)}
-$$
-
 ## How to test
 
 TODO
