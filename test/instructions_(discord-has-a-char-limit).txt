@@ -1,0 +1,96 @@
+# Running the filter characterization study
+
+Setup and run instructions for the three study scripts (`filter_study.py`, `study_sim.py`, `study_top.py`) in an existing Tiny Tapeout repo.
+
+## Prerequisites
+
+Your repo must already contain these files. They do not come with the three study scripts.
+
+- `src/`: `tt_um_filter_top.v`, `spi.v`, `filter_core.v`
+- `test/`: `Makefile`, `tb.v`, `core_tb.py`, `dut_tb.py`, `filter_golden.py`
+
+You also need:
+
+- Linux or WSL2 (Ubuntu)
+- Python 3.11 or newer
+- `make` and Icarus Verilog: `sudo apt install iverilog make`
+
+## 1. Python environment
+
+```bash
+python3 -m venv ~/tt-venv
+source ~/tt-venv/bin/activate
+cd <repo>/test
+pip install -r requirements.txt numpy matplotlib
+```
+
+`requirements.txt` provides pytest and cocotb 2.1.0. numpy and matplotlib are extra.
+
+## 2. Add the three files
+
+Copy these into `test/`, next to `Makefile`:
+
+```
+filter_study.py
+study_sim.py
+study_top.py
+```
+
+Do not edit the RTL, the Makefile, or the existing tests.
+
+## 3. Run (from `test/`, in this order)
+
+```bash
+python filter_study.py --backend golden --quick   # no simulator, seconds
+python filter_study.py --quick                    # filter_core RTL, about 1 min
+python filter_study.py --backend top --quick      # whole project through SPI pins, about 1 min
+```
+
+- Drop `--quick` for the full-size version of each run.
+- Each simulator run prints a `[crosscheck] ... match the golden model` line. If it prints `CROSSCHECK FAILED`, the run stops at the first mismatching sample.
+- PNGs and cached data go to `test/results/`.
+- Add `results/`, `sim_build/`, `tb.fst` and `results_study*.xml` to `.gitignore`.
+
+## 4. Gate-level netlist (optional)
+
+You need the PDK (cell models) and the netlist.
+
+### PDK
+
+```bash
+pip install --upgrade ciel
+export PDK_ROOT=$HOME/pdk
+ciel enable --pdk-family gf180mcu <PDK_VERSION>
+ls $PDK_ROOT/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/verilog/   # must list 2 files
+```
+
+`<PDK_VERSION>` is in your repo's GitHub Actions log. Open the `gl_test` job, then `Run tests`, and read the `env:` block. Ours was `54435919abffb937387ec956209f9cf5fd2dfbee`, but use the one from your own log.
+
+### Netlist
+
+The netlist is not stored in the repo.
+
+1. Download the `tt_submission` artifact from the successful GDS workflow run for your current commit.
+2. Unzip it. It should contain a single `.v` file.
+3. Copy it into place:
+
+```bash
+cp <unzipped>/*.v test/gate_level_netlist.v
+```
+
+### Run
+
+```bash
+GATES=yes make                                    # baseline: should pass all tests
+python filter_study.py --backend netlist --quick  # about 2 min
+```
+
+## Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| `Errno 22` when saving PNGs on `/mnt/c` | Close any image previews, or use `--outdir ~/study_out` (the WSL home folder is also faster) |
+| `--replot` found nothing | Use the same `--backend` and `--quick` as the original run |
+| Netlist backend exits immediately | `gate_level_netlist.v` or `PDK_ROOT` is missing |
+| Netlist compile error about unknown cells | The PDK version doesn't match the one that built your netlist |
+| Wipe cached results | Delete `test/results/cache/` |
